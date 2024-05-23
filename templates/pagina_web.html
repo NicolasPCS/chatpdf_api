@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport", content="height=device-height">
+    <title>Asistente Chat with PDF >Bantotal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <!--<link rel="stylesheet" type="text/css" href="../templates/styles.css">-->
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; display: flex; overflow: auto;height:90vh; max-height: 90vh;}
+        #menu {  background-color: #f0f0f0; padding: 20px; width: 20vw; height:100vh; max-height: 100vh;margin-top:0; overflow: auto; }
+        #menuTitle {
+            font-size: 24px; /* Más grande */
+            text-align: center; /* Centrado */
+            background-color: #333; /* Fondo más oscuro */
+            color: white;
+            padding: 10px;
+            margin: -20px; /* Ajuste para compensar el padding del menú */
+            margin-bottom: 20px; /* Espacio después del título */
+        }
+        .menuSection {
+            margin-top: 20px;
+        }
+        hr {
+            border: none;
+            height: 1px;
+            background-color: #ccc;
+            margin: 10px 0; /* Espacio antes y después de la línea */
+        }
+        #sistemasSelect {
+            width: 100%; /* Ajusta al tamaño del contenedor */
+            padding: 10px;
+            border-radius: 20px; /* Bordes redondeados */
+            font-size: 16px; /* Tamaño de fuente más grande */
+            cursor: pointer;
+        }
+
+        .toggleContainer {
+            position: relative;
+            width: 40px; /* Más pequeño */
+            height: 20px; /* Más pequeño */
+            background-color: #ddd;
+            border-radius: 10px; /* Bordes redondeados */
+            margin-left: auto; /* Alineación a la derecha */
+        }
+
+        .toggleButton {
+            position: absolute;
+            width: 20px; /* Ajuste para el botón más pequeño */
+            height: 100%;
+            background-color: #bbb;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        /* Ajuste para cuando el container está activo */
+        .toggleContainer.active {
+            background-color: #999; /* Fondo más opaco cuando está activo */
+        }
+
+        /* Ajuste para cuando el botón está activo y a la derecha */
+        .toggleButton.active {
+            right: 0;
+        }
+
+
+        #content { flex-grow: 1; padding: 20px; overflow-y: auto; align-items: center; display: flex; flex-direction: column; width: 80vw; height:100vh; max-height: 100vh;margin-top:0}
+        #chat { height: 70%;overflow-y: auto; background-color: #f0f0f0; padding: 10px; margin: 5px auto; width: 90%; border: 1px solid #ccc; text-align: left; }
+        .message { padding: 10px; border-radius: 15px; margin-bottom: 10px; word-wrap: break-word; }
+        .user { background-color: #e6e6e6; }
+        .agent { background-color: #cccccc; }
+
+        #message-container {
+            position: relative;
+            width: 80%;
+            margin: 10px;
+        }
+
+        #default-questions {
+            margin: 10px; /* Añade un margen superior para separarlo del contenedor de mensajes */
+            text-align: center; /* Centra el texto de los botones si es necesario */
+        }
+        #message {
+            border-radius: 15px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            width: calc(100% - 90px); /* Ajuste para espacio del botón de archivo y enviar */
+            height: auto;
+            display: block;
+            outline: none;
+            resize: none;
+            overflow: hidden;
+            box-sizing: border-box;
+            position: relative;
+        }
+        /* Estilos para el ícono de enviar (flecha) */
+        .sendIcon {
+            border: solid rgb(255, 255, 255);
+            border-width: 0 2px 2px 0;
+            display: inline-block;
+            padding: 2px;
+            transform: rotate(-45deg);
+        }
+
+        /* Estilos para el ícono de esperar (cuadrado) */
+        .waitIcon {
+            display: inline-block;
+            width: 10px; /* Ajusta al tamaño deseado */
+            height: 10px; /* Ajusta al tamaño deseado */
+            background-color: white;
+            cursor: default;
+        }
+
+        /* Ajustes para centrar el botón con respecto a la barra de mensajes */
+        #sendButton { 
+            cursor: pointer; 
+            background-color: #000; 
+            color: #fff; 
+            border: none; 
+            border-radius: 15px; 
+            width: 30px; 
+            height: 30px; 
+            position: absolute; 
+            right: 0; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        
+        .header {
+            display: flex;
+            align-items: center; /* Asegura la alineación vertical */
+            justify-content: flex-start; /* Elementos alineados al inicio */
+            padding-right: 20px;
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+
+        #newChatButton {
+            cursor: pointer;
+            background-color: #f4eaea; /* Cambia al color deseado */
+            color: #e93535;
+            border: none;
+            border-radius: 50%;
+            width: 30px; /* Ajusta según necesidad */
+            height: 30px; /* Ajusta según necesidad */
+            font-size: 20px; /* Ajusta según necesidad */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px; /* Espacio entre el botón y el título */
+        }
+
+        h2 { text-align: center;margin: 0; cursor: default;  }
+        .red { color: red; }
+        .pregunta-btn {
+            background-color: #F0F0F0; /* Color de fondo suave */
+            border: none;
+            border-radius: 20px; /* Bordes redondeados */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Sombra ligera */
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            }
+            
+        .feedback-buttons-container {
+            position: relative; 
+            float: right;
+            margin-right: 10px;
+            background-color: #ccccccf6;
+        }
+
+        .feedback-button-pos, .feedback-button-neg {
+            cursor: pointer;
+            margin-left: 5px;
+            margin-bottom: 5px;
+            padding: 10px;
+            border-radius: 50%; /* Hace el fondo redondo */
+            background-color: white; /* Fondo blanco */
+            color: #444; /* Color por defecto, se sobrescribe abajo */
+            font-size: 12px; /* Ajusta este valor según necesites */
+            display: inline-flex; /* Centra vertical y horizontalmente el contenido */
+            align-items: center;
+            justify-content: center;
+            width:3px; /* Asegura que sea un círculo */
+            height: 3px; /* Asegura que sea un círculo */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Opcional: añade una sombra para mejor visibilidad */
+        }
+
+        .feedback-button-pos {
+            color: green; /* Tick en verde */
+        }
+
+        .feedback-button-neg {
+            color: red; /* Cruz en rojo */
+        }
+
+        .feedback-box {
+            display: block;
+            width: 150px; /* Ancho más pequeño */
+            height: 100px; /* Alto para hacerlo cuadrado */
+            font-size: 14px;
+            border: 1px solid #000000;
+            border-radius: 4px;
+            padding: 5px;
+            box-sizing: border-box; /* Asegura que padding y border estén incluidos en el ancho y alto */
+            resize: none;
+        }
+
+        #uploadFileButton {
+            cursor: pointer;
+            background-color: transparent;
+            color: #000;
+            border: none;
+            position: absolute;
+            right: 50px; /* Ajuste según necesidad */
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        #fileNameContainer {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #333;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div id="content">
+        <div class="header">
+            <button id="newChatButton">+</button>
+            <h2>Asistente <span class="red">&gt;</span>Bantotal</h2>
+        </div>
+        <div id="chat"></div>
+        <div id="message-container">
+            <textarea id="message" rows="1" autofocus oninput="adjustHeight()" placeholder="Escribe tu pregunta..."></textarea>
+            
+            <button id="uploadFileButton" onclick="document.getElementById('fileInput').click()">
+                <i class="fa fa-paperclip" aria-hidden="true"></i>
+            </button>
+            
+            <div id="sendButton" onclick="sendMessage()">
+                <i id="sendIcon" class="sendIcon"></i>
+            </div>
+        </div>
+        
+        <input type="file" id="fileInput" style="display: none;" onchange="displayFileName()">
+        <div id="fileNameContainer"></div> <!-- Contenedor para el nombre del archivo -->
+    </div>
+
+    <!-- SCRIPTS JavaScript -->
+    <!--<script src="../templates/functions.js"></script>-->
+
+    <script>
+        let awaitingResponse = false;
+        document.getElementById('newChatButton').addEventListener('click', function() {
+            fetch('/new_chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({tabId: tabId}),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // Muestra la respuesta del servidor, por ejemplo, para depuración
+                var chat = document.getElementById('chat');
+                chat.innerHTML = ''; // Esto borrará el contenido del chat
+            })
+            .catch(error => console.error('Error al iniciar un nuevo chat:', error));
+        });
+        
+        function adjustHeight() {
+            var message = document.getElementById('message');
+            var scrollPosition = window.scrollY;
+            message.style.height = 'auto';
+            message.style.height = (message.scrollHeight+10)+ 'px';
+        }
+
+        let tabId = sessionStorage.getItem('tabId');
+        if (!tabId) {
+            tabId = Date.now().toString() + Math.random().toString();
+            sessionStorage.setItem('tabId', tabId);
+        }
+
+        function sendMessage() {
+            if (awaitingResponse) return;
+            var messageInput = document.getElementById('message');
+            var message = messageInput.value;
+            var chat = document.getElementById('chat');
+            var sendButton = document.getElementById('sendButton');
+            var sendIcon = document.getElementById('sendIcon');
+
+            if(message.trim() !== '') {
+                awaitingResponse = true;
+
+                // Añade el mensaje del usuario a la caja de chat
+                chat.innerHTML += '<div class="message user"><b>Tú</b><br>' + escapeHTML(message).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
+                chat.scrollTop = chat.scrollHeight;
+
+                // Muestra "Respondiendo..." en el campo de mensaje y deshabilita entrada adicional
+                messageInput.value = 'Respondiendo...';
+                messageInput.disabled = true;
+                sendIcon.className = 'waitIcon';
+                sendButton.style.cursor = 'default';
+
+                // Envía el mensaje inicial al servidor
+                fetch('/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({message: message, tabId: tabId}), 
+                }).then(response => {
+                    // Aquí, iniciar EventSource tras éxito del POST inicial
+                    var eventSource = new EventSource('/stream?tabId=' + encodeURIComponent(tabId));; // Usar una nueva ruta, por ejemplo, '/stream'
+                    let messageContainer;
+                    eventSource.onmessage = function(event) {
+                        const data = event.data;
+                        if(data === "done") {
+                            eventSource.close();
+                            messageContainer.innerHTML += '<div class="feedback-buttons-container">' +
+                            ' <span class="feedback-button-pos" onclick="showFeedbackBox(this, true)">✓</span>' +
+                            ' <span class="feedback-button-neg" onclick="showFeedbackBox(this, false)">✗</span>' +
+                            '</div></div>';
+                            // Restablece UI para nueva entrada
+                            sendIcon.className = 'sendIcon';
+                            sendButton.style.cursor = 'pointer';
+                            messageInput.value = '';
+                            messageInput.disabled = false;
+                            messageInput.focus();
+                            awaitingResponse = false;
+                        } else {
+                            if (!messageContainer) {
+                                messageContainer = document.createElement('div');
+                                messageContainer.classList.add('message', 'agent');
+                                messageContainer.style.whiteSpace = 'pre-wrap';
+                                messageContainer.innerHTML = '<b>Asistente</b><br>';
+                                chat.appendChild(messageContainer);
+                            }
+                            messageContainer.innerHTML += data.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\|\|/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
+                            chat.scrollTop = chat.scrollHeight;
+                        }
+                    };
+
+                    eventSource.onerror = function(error) {
+                        console.error('EventSource failed:', error);
+                        eventSource.close();
+                    };
+
+
+                }).catch(error => {
+                    console.error('Error:', error);
+                    sendIcon.className = 'sendIcon';
+                    sendButton.style.cursor = 'pointer';
+                    messageInput.value = '';
+                    messageInput.disabled = false;
+                    messageInput.focus();
+                    awaitingResponse = false;
+                });
+            }
+
+            // Restablece el tamaño del textarea
+            adjustHeight();
+        }
+
+        function resetUI() {
+            // Restablece la interfaz de usuario para permitir nuevas entradas
+            sendIcon.className = 'sendIcon';
+            sendButton.style.cursor = 'pointer';
+            messageInput.value = '';
+            messageInput.disabled = false;
+            messageInput.focus();
+            awaitingResponse = false;
+        }
+
+
+
+        function escapeHTML(text) {
+            var map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        function showFeedbackBox(button, isPositive) {
+            // Elimina un feedbackBox existente si se hace clic nuevamente
+            let existingFeedbackBox = button.parentNode.querySelector(".feedback-container");
+            if (existingFeedbackBox) {
+                existingFeedbackBox.remove();
+            }
+
+            // Crea el contenedor para el feedbackBox y el botón de cerrar
+            let feedbackContainer = document.createElement("div");
+            feedbackContainer.classList.add("feedback-container");
+            feedbackContainer.style.position = 'absolute';
+            let buttonRect = button.getBoundingClientRect();
+            let containerRect = button.parentNode.getBoundingClientRect();
+            feedbackContainer.style.left = (buttonRect.left - containerRect.left - 150) + 'px';
+            feedbackContainer.style.top = (buttonRect.top - containerRect.top - 100) + 'px';
+            feedbackContainer.style.zIndex = '1000';
+
+            // Crea el textarea para el feedback
+            let feedbackBox = document.createElement("textarea");
+            feedbackBox.classList.add("feedback-box");
+            feedbackBox.placeholder = isPositive ? "Qué te gustó..." : "Ingresar el error en la respuesta...";
+            feedbackBox.style.width = '100%'; // Asegura que el textarea ocupe todo el contenedor
+            feedbackBox.style.boxSizing = 'border-box'; // Incluye el padding y border en la anchura total
+
+            // Crea el botón de cerrar
+            let closeButton = document.createElement("button");
+            closeButton.textContent = "X"; // O usa un icono
+            closeButton.style.position = 'absolute';
+            closeButton.style.right = '0px';
+            closeButton.style.top = '0px';
+            closeButton.onclick = function() {
+                feedbackContainer.remove();
+            };
+
+            // Añade el feedbackBox y closeButton al contenedor
+            feedbackContainer.appendChild(feedbackBox);
+            feedbackContainer.appendChild(closeButton);
+
+            button.parentNode.style.position = 'relative';
+            button.parentNode.appendChild(feedbackContainer);
+
+            feedbackBox.addEventListener('keydown', function(event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    sendFeedback(feedbackBox.value, button, isPositive);
+                    feedbackContainer.remove();
+                }
+            });
+
+            feedbackBox.focus();
+        }
+
+
+        function sendFeedback(feedbackText, button, Ispositive) {
+            fetch('/feedback', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({feedback: feedbackText, positive:Ispositive,tabId: tabId}),
+                    })
+                    .then(response => response.json())
+                    .then(data => console.log(data))
+                    .catch(error => console.error('Error:', error));
+        }
+
+
+        document.getElementById('message').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        window.onload = adjustHeight;
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const eventChange = new Event('change');
+            selectElement.dispatchEvent(eventChange);
+        });
+
+        // Manejar el archivo cargado
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                fetch('/uploadFile', {
+                    method: 'POST',
+                    body: formData,
+                })
+                .then(response => {
+                    console.log(response.json())
+                })
+                .then(data => {
+                    console.log('Archivo subido con éxito:', data);
+                    // Aquí puedes añadir más lógica si es necesario, por ejemplo, mostrar un mensaje en el chat
+                })
+                .catch(error => {
+                    console.error('Error al subir el archivo:', error);
+                });
+            }
+        });
+
+        function displayFileName() {
+            var fileInput = document.getElementById('fileInput');
+            var fileNameContainer = document.getElementById('fileNameContainer');
+            if (fileInput.files.length > 0) {
+                var fileName = fileInput.files[0].name;
+                fileNameContainer.textContent = 'Archivo: ' + fileName;
+            } else {
+                fileNameContainer.textContent = '';
+            }
+        }
+
+    </script>
+</body>
+</html>
