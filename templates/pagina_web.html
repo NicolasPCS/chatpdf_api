@@ -265,6 +265,8 @@
 
     <script>
         let awaitingResponse = false;
+        let fileUploaded = false;
+
         document.getElementById('newChatButton').addEventListener('click', function() {
             fetch('/new_chat', {
                 method: 'POST',
@@ -297,82 +299,105 @@
 
         function sendMessage() {
             if (awaitingResponse) return;
+            if (!fileUploaded) {
+                alert("Por favor, sube un archivo PDF primero.");
+                return;
+            }
             var messageInput = document.getElementById('message');
             var message = messageInput.value;
             var chat = document.getElementById('chat');
             var sendButton = document.getElementById('sendButton');
             var sendIcon = document.getElementById('sendIcon');
 
-            if(message.trim() !== '') {
+            if (message.trim() !== '') {
                 awaitingResponse = true;
-
-                // Añade el mensaje del usuario a la caja de chat
                 chat.innerHTML += '<div class="message user"><b>Tú</b><br>' + escapeHTML(message).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
                 chat.scrollTop = chat.scrollHeight;
 
-                // Muestra "Respondiendo..." en el campo de mensaje y deshabilita entrada adicional
                 messageInput.value = 'Respondiendo...';
                 messageInput.disabled = true;
                 sendIcon.className = 'waitIcon';
                 sendButton.style.cursor = 'default';
 
-                // Envía el mensaje inicial al servidor
+                console.log(message)
+
                 fetch('/send', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({message: message, tabId: tabId}), 
-                }).then(response => {
-                    // Aquí, iniciar EventSource tras éxito del POST inicial
-                    var eventSource = new EventSource('/stream?tabId=' + encodeURIComponent(tabId));; // Usar una nueva ruta, por ejemplo, '/stream'
-                    let messageContainer;
-                    eventSource.onmessage = function(event) {
-                        const data = event.data;
-                        if(data === "done") {
-                            eventSource.close();
-                            messageContainer.innerHTML += '<div class="feedback-buttons-container">' +
-                            ' <span class="feedback-button-pos" onclick="showFeedbackBox(this, true)">✓</span>' +
-                            ' <span class="feedback-button-neg" onclick="showFeedbackBox(this, false)">✗</span>' +
-                            '</div></div>';
-                            // Restablece UI para nueva entrada
-                            sendIcon.className = 'sendIcon';
-                            sendButton.style.cursor = 'pointer';
-                            messageInput.value = '';
-                            messageInput.disabled = false;
-                            messageInput.focus();
-                            awaitingResponse = false;
-                        } else {
-                            if (!messageContainer) {
-                                messageContainer = document.createElement('div');
-                                messageContainer.classList.add('message', 'agent');
-                                messageContainer.style.whiteSpace = 'pre-wrap';
-                                messageContainer.innerHTML = '<b>Asistente</b><br>';
-                                chat.appendChild(messageContainer);
-                            }
-                            messageContainer.innerHTML += data.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\|\|/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
-                            chat.scrollTop = chat.scrollHeight;
-                        }
-                    };
+                    body: JSON.stringify({message: message}),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    var chat = document.getElementById('chat');
 
-                    eventSource.onerror = function(error) {
-                        console.error('EventSource failed:', error);
-                        eventSource.close();
-                    };
+                    console.log(data)
+                    console.log(data.answer)
+                    
 
+                    chat.innerHTML += '<div class="message agent"><b>Asistente</b><br>' + escapeHTML(data.answer).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
+                    chat.scrollTop = chat.scrollHeight;
 
-                }).catch(error => {
-                    console.error('Error:', error);
-                    sendIcon.className = 'sendIcon';
-                    sendButton.style.cursor = 'pointer';
                     messageInput.value = '';
                     messageInput.disabled = false;
-                    messageInput.focus();
+                    sendIcon.className = 'sendIcon';
+                    sendButton.style.cursor = 'pointer';
+                    awaitingResponse = false;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    messageInput.value = '';
+                    messageInput.disabled = false;
+                    sendIcon.className = 'sendIcon';
+                    sendButton.style.cursor = 'pointer';
                     awaitingResponse = false;
                 });
             }
 
-            // Restablece el tamaño del textarea
+            adjustHeight();
+        }
+
+        function uploadFile(file) {
+            var formData = new FormData();
+            formData.append('file', file);
+
+            var messageInput = document.getElementById('message');
+            var message = messageInput.value;
+            var chat = document.getElementById('chat');
+            var sendButton = document.getElementById('sendButton');
+            var sendIcon = document.getElementById('sendIcon');
+
+            messageInput.value = 'Cargando archivo...';
+            messageInput.disabled = true;
+            sendIcon.className = 'waitIcon';
+            sendButton.style.cursor = 'default';
+
+            fetch('/uploadFile', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                fileUploaded = true;
+
+                //console.log(data.message)
+
+                var chat = document.getElementById('chat');
+                chat.innerHTML += '<div class="message agent"><b>Asistente</b><br>' + escapeHTML(data.message).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
+                chat.scrollTop = chat.scrollHeight;
+
+                messageInput.value = '';
+                messageInput.disabled = false;
+                sendIcon.className = 'sendIcon';
+                sendButton.style.cursor = 'pointer';
+                awaitingResponse = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+
             adjustHeight();
         }
 
@@ -385,8 +410,6 @@
             messageInput.focus();
             awaitingResponse = false;
         }
-
-
 
         function escapeHTML(text) {
             var map = {
@@ -451,14 +474,13 @@
             feedbackBox.focus();
         }
 
-
-        function sendFeedback(feedbackText, button, Ispositive) {
+        function sendFeedback(feedbackText, button, isPositive) {
             fetch('/feedback', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({feedback: feedbackText, positive:Ispositive,tabId: tabId}),
+                        body: JSON.stringify({feedback: feedbackText, positive: isPositive, tabId: tabId}),
                     })
                     .then(response => response.json())
                     .then(data => console.log(data))
@@ -480,35 +502,13 @@
         });
 
         // Manejar el archivo cargado
-        document.getElementById('fileInput').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const formData = new FormData();
-                formData.append('file', file);
-
-                fetch('/uploadFile', {
-                    method: 'POST',
-                    body: formData,
-                })
-                .then(response => {
-                    console.log(response.json())
-                })
-                .then(data => {
-                    console.log('Archivo subido con éxito:', data);
-                    // Aquí puedes añadir más lógica si es necesario, por ejemplo, mostrar un mensaje en el chat
-                })
-                .catch(error => {
-                    console.error('Error al subir el archivo:', error);
-                });
-            }
-        });
-
         function displayFileName() {
             var fileInput = document.getElementById('fileInput');
             var fileNameContainer = document.getElementById('fileNameContainer');
             if (fileInput.files.length > 0) {
                 var fileName = fileInput.files[0].name;
                 fileNameContainer.textContent = 'Archivo: ' + fileName;
+                uploadFile(fileInput.files[0]);
             } else {
                 fileNameContainer.textContent = '';
             }
