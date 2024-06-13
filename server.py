@@ -40,6 +40,48 @@ def health_check():
 @app.post("/uploadFile")
 async def upload_file(file: UploadFile = File(...)):
     global vector_store, chat_history
+    try:
+        persist_directory = "/home/site/wwwroot/persist"
+        
+        # Crear directorio si no existe
+        if not os.path.exists(persist_directory):
+            os.makedirs(persist_directory)
+            print(f"Directorio creado: {persist_directory}")
+        
+        # Verificar permisos de escritura
+        if not os.access(persist_directory, os.W_OK):
+            return JSONResponse(content={"message": "No se puede escribir en el directorio de persistencia."}, status_code=500)
+        
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            shutil.copyfileobj(file.file, temp_file)
+            document_path = temp_file.name
+
+        # Process the PDF
+        loader = PyPDFLoader(document_path)
+        documents = loader.load_and_split()
+        text_splitter = CharacterTextSplitter(chunk_size=1200, chunk_overlap=25)
+        docs = text_splitter.split_documents(documents)
+        embeddings = AzureOpenAIEmbeddings()
+        vector_store = Chroma.from_documents(docs, embeddings, persist_directory=persist_directory)
+        
+        # Verificar el contenido del vector store antes de persistir
+        print("Documentos cargados en el vector store:")
+        for doc in docs:
+            print(doc.page_content[:200])  # Imprime los primeros 200 caracteres de cada documento
+        
+        vector_store.persist()
+
+        return {"message": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."}
+    
+    except Exception as e:
+        # Capturar y mostrar el error detallado
+        error_message = f"Error procesando el archivo: {str(e)}"
+        print(error_message)
+        return JSONResponse(content={"message": error_message}, status_code=500)
+
+""" @app.post("/uploadFile")
+async def upload_file(file: UploadFile = File(...)):
+    global vector_store, chat_history
 
     try:
         # Local
@@ -67,7 +109,7 @@ async def upload_file(file: UploadFile = File(...)):
         return {"message": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."}
     
     except Exception as e:
-        return JSONResponse(content={"error": "Error procesando la carga del archivo"}, status_code=500)
+        return JSONResponse(content={"error": "Error procesando la carga del archivo"}, status_code=500) """
 
 @app.post("/send")
 async def send_message(request: Request):
