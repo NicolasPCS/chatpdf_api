@@ -40,23 +40,34 @@ def health_check():
 @app.post("/uploadFile")
 async def upload_file(file: UploadFile = File(...)):
     global vector_store, chat_history
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        shutil.copyfileobj(file.file, temp_file)
-        document_path = temp_file.name
 
-    # Process the PDF
-    loader = PyPDFLoader(document_path)
-    documents = loader.load_and_split()
-    text_splitter = CharacterTextSplitter(chunk_size=1200, chunk_overlap=25)
-    docs = text_splitter.split_documents(documents)
-    embeddings = AzureOpenAIEmbeddings()
-    vector_store = Chroma.from_documents(docs, embeddings, persist_directory="./persist")
-    vector_store.persist()
+    try:
+        # Local
+        #with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        # Usar el directorio temporal de Azure
+        with tempfile.NamedTemporaryFile(dir="/tmp", delete=False) as temp_file:
+            shutil.copyfileobj(file.file, temp_file)
+            document_path = temp_file.name
 
-    # Add the file upload message to chat history
-    #chat_history.append({"role": "system", "content": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."})
+        # Process the PDF
+        loader = PyPDFLoader(document_path)
+        documents = loader.load_and_split()
+        text_splitter = CharacterTextSplitter(chunk_size=1200, chunk_overlap=25)
+        docs = text_splitter.split_documents(documents)
+        embeddings = AzureOpenAIEmbeddings()
+        # Local
+        #vector_store = Chroma.from_documents(docs, embeddings, persist_directory="./persist")
+        # Azure
+        vector_store = Chroma.from_documents(docs, embeddings, persist_directory="/home/site/wwwroot/persist")
+        vector_store.persist()
 
-    return {"message": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."}
+        # Add the file upload message to chat history
+        #chat_history.append({"role": "system", "content": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."})
+
+        return {"message": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."}
+    
+    except Exception as e:
+        return JSONResponse(content={"error": "Error procesando la carga del archivo"}, status_code=500)
 
 @app.post("/send")
 async def send_message(request: Request):
