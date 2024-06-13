@@ -27,12 +27,15 @@ templates = Jinja2Templates(directory="templates")
 # Global variables
 vector_store = None
 chat_history = []
-chat_history2 = []
 chat_histories = {}
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("pagina_web.html", {"request": request})
+
+@app.get("/health")
+def health_check():
+    return 'OK'
 
 @app.post("/uploadFile")
 async def upload_file(file: UploadFile = File(...)):
@@ -57,7 +60,7 @@ async def upload_file(file: UploadFile = File(...)):
 
 @app.post("/send")
 async def send_message(request: Request):
-    global vector_store, chat_history, chat_history2
+    global vector_store, chat_history
 
     data = await request.json()  # Obtén el JSON del cuerpo de la solicitud
     question = data.get('message')  # Accede al campo 'message'
