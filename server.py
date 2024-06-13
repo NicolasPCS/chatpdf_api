@@ -45,7 +45,7 @@ async def upload_file(file: UploadFile = File(...)):
         # Local
         #with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         # Usar el directorio temporal de Azure
-        with tempfile.NamedTemporaryFile(dir="/tmp", delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile(dir="/temp", delete=False) as temp_file:
             shutil.copyfileobj(file.file, temp_file)
             document_path = temp_file.name
 
