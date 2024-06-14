@@ -38,7 +38,7 @@ def health_check():
     return 'OK'
 
 # Con FAISS
-""" @app.post("/uploadFile")
+@app.post("/uploadFile")
 async def upload_file(file: UploadFile = File(...)):
     global vector_store, chat_history
     try:
@@ -65,10 +65,10 @@ async def upload_file(file: UploadFile = File(...)):
         # Capturar y mostrar el error detallado
         error_message = f"Error procesando el archivo: {str(e)}"
         print(error_message)
-        return JSONResponse(content={"message": error_message}, status_code=500) """
+        return JSONResponse(content={"message": error_message}, status_code=500)
 
 # Con ChromaDB
-@app.post("/uploadFile")
+""" @app.post("/uploadFile")
 async def upload_file(file: UploadFile = File(...)):
     global vector_store, chat_history
     try:
@@ -108,7 +108,7 @@ async def upload_file(file: UploadFile = File(...)):
         # Capturar y mostrar el error detallado
         error_message = f"Error procesando el archivo: {str(e)}"
         print(error_message)
-        return JSONResponse(content={"message": error_message}, status_code=500)
+        return JSONResponse(content={"message": error_message}, status_code=500) """
 
 # Anterior
 """ @app.post("/uploadFile")
@@ -144,7 +144,7 @@ async def upload_file(file: UploadFile = File(...)):
         return JSONResponse(content={"error": "Error procesando la carga del archivo"}, status_code=500) """
 
 # Con FAISS
-""" @app.post("/send")
+@app.post("/send")
 async def send_message(request: Request):
     global vector_store, chat_history
 
@@ -158,7 +158,7 @@ async def send_message(request: Request):
 
     try:
         # Definir el template y las variables de entrada
-        template = """ """
+        template = """
         As a highly specialized assistant in helping Bantotal's analyst programmers understand the development of a requirement in Genexus, your task is to respond to questions in Spanish related to client requirements. 
         These documents contain information about the requirements and the technical solution, including the logic that the program will execute, the database tables involved, and the programs related to the solution's development.
 
@@ -170,7 +170,7 @@ async def send_message(request: Request):
         Question: {question}
 
         Helpful Answer:
-        """ """
+        """
 
         input_variables = ["context", "question"]
         QA_CHAIN_PROMPT = PromptTemplate(template=template, input_variables=input_variables)
@@ -218,10 +218,10 @@ async def send_message(request: Request):
     print(answer)
 
     # Devolver la respuesta JSON
-    return JSONResponse(content={"answer": answer}) """
+    return JSONResponse(content={"answer": answer})
 
 # Con ChromaDB
-@app.post("/send")
+""" @app.post("/send")
 async def send_message(request: Request):
     global vector_store, chat_history
 
@@ -238,13 +238,13 @@ async def send_message(request: Request):
         vectordb = Chroma(persist_directory="./persist", embedding_function=embeddings)
 
         # Verificar el contenido del vector store
-        """ print("Contenido del Vector Store:")
+        """ """ print("Contenido del Vector Store:")
         all_docs = vectordb.similarity_search("", k=5)
         for doc in all_docs:
-            print(doc.page_content) """
+            print(doc.page_content) """ """
 
         # Definir el template y las variables de entrada
-        template = """
+        template = """ """
         As a highly specialized assistant in helping Bantotal's analyst programmers understand the development of a requirement in Genexus, your task is to respond to questions in Spanish related to client requirements. 
         These documents contain information about the requirements and the technical solution, including the logic that the program will execute, the database tables involved, and the programs related to the solution's development.
 
@@ -256,7 +256,7 @@ async def send_message(request: Request):
         Question: {question}
 
         Helpful Answer:
-        """
+        """ """
 
         input_variables = ["context", "question"]
         QA_CHAIN_PROMPT = PromptTemplate(template=template, input_variables=input_variables)
@@ -306,7 +306,7 @@ async def send_message(request: Request):
     print(answer)
 
     # Devolver la respuesta JSON
-    return JSONResponse(content={"answer": answer})
+    return JSONResponse(content={"answer": answer}) """
 
 #----------------------------------------------------------------------------------------
 
