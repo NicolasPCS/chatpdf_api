@@ -18,6 +18,7 @@ import uvicorn
 import os
 import csv
 import uuid
+import faiss
 
 load_dotenv()
 
@@ -69,7 +70,7 @@ async def upload_file(file: UploadFile = File(...)):
         
         # Guardar el vector store en el directorio del usuario
         index_file_path = os.path.join(user_dir, "vector_store.index")
-        vector_store.save(index_file_path)
+        faiss.write_index(vector_store.index, index_file_path)
 
         return {"message": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."}
     
@@ -98,7 +99,8 @@ async def send_message(request: ChatRequest):
 
     try:
         # Cargar el vector store desde el directorio del usuario
-        vector_store = FAISS.load_local(index_file_path, embeddings=AzureOpenAIEmbeddings())
+        index = faiss.read_index(index_file_path)
+        vector_store = FAISS(index=index, embeddings=AzureOpenAIEmbeddings())
 
         # Definir el template y las variables de entrada
         template = """
