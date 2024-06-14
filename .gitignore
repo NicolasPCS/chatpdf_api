@@ -4,6 +4,7 @@ metodos_obj_str.pkl
 
 templates/functions.js
 templates/styles.css
+server_loc.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -10,16 +10,22 @@ from langchain_openai.embeddings import AzureOpenAIEmbeddings
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import AIMessage, HumanMessage
 from dotenv import load_dotenv
+from pydantic import BaseModel
 import tempfile
 import shutil
 import json
 import uvicorn
 import os
 import csv
+import uuid
 
 load_dotenv()
 
 app = FastAPI()
+
+# Directorio persistente local en App Service
+PERSIST_DIR = os.path.join(os.getenv("HOME"), "site", "wwwroot", "persist")
+os.makedirs(PERSIST_DIR, exist_ok=True)
 
 # Static HTML file handling using Jinja2
 templates = Jinja2Templates(directory="templates")
@@ -37,10 +43,17 @@ async def home(request: Request):
 def health_check():
     return 'OK'
 
+class ChatRequest(BaseModel):
+    user_id: str
+    message: str
+
 # Con FAISS
 @app.post("/uploadFile")
 async def upload_file(file: UploadFile = File(...)):
-    global vector_store, chat_history
+    user_id = str(uuid.uuid4())  # Generar un identificador único para el usuario
+    user_dir = os.path.join(PERSIST_DIR, user_id)
+    os.makedirs(user_dir, exist_ok=True)
+    
     try:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             shutil.copyfileobj(file.file, temp_file)
@@ -54,10 +67,9 @@ async def upload_file(file: UploadFile = File(...)):
         embeddings = AzureOpenAIEmbeddings()
         vector_store = FAISS.from_documents(docs, embeddings)
         
-        # Verificar el contenido del vector store
-        print("Documentos cargados en el vector store:")
-        for doc in docs:
-            print(doc.page_content[:200])  # Imprime los primeros 200 caracteres de cada documento
+        # Guardar el vector store en el directorio del usuario
+        index_file_path = os.path.join(user_dir, "vector_store.index")
+        vector_store.save(index_file_path)
 
         return {"message": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."}
     
@@ -67,96 +79,27 @@ async def upload_file(file: UploadFile = File(...)):
         print(error_message)
         return JSONResponse(content={"message": error_message}, status_code=500)
 
-# Con ChromaDB
-""" @app.post("/uploadFile")
-async def upload_file(file: UploadFile = File(...)):
-    global vector_store, chat_history
-    try:
-        persist_directory = "/home/site/wwwroot/persist"
-        
-        # Crear directorio si no existe
-        if not os.path.exists(persist_directory):
-            os.makedirs(persist_directory)
-            print(f"Directorio creado: {persist_directory}")
-        
-        # Verificar permisos de escritura
-        if not os.access(persist_directory, os.W_OK):
-            return JSONResponse(content={"message": "No se puede escribir en el directorio de persistencia."}, status_code=500)
-        
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            shutil.copyfileobj(file.file, temp_file)
-            document_path = temp_file.name
-
-        # Process the PDF
-        loader = PyPDFLoader(document_path)
-        documents = loader.load_and_split()
-        text_splitter = CharacterTextSplitter(chunk_size=1200, chunk_overlap=25)
-        docs = text_splitter.split_documents(documents)
-        embeddings = AzureOpenAIEmbeddings()
-        vector_store = Chroma.from_documents(docs, embeddings, persist_directory=persist_directory)
-        
-        # Verificar el contenido del vector store antes de persistir
-        print("Documentos cargados en el vector store:")
-        for doc in docs:
-            print(doc.page_content[:200])  # Imprime los primeros 200 caracteres de cada documento
-        
-        vector_store.persist()
-
-        return {"message": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."}
-    
-    except Exception as e:
-        # Capturar y mostrar el error detallado
-        error_message = f"Error procesando el archivo: {str(e)}"
-        print(error_message)
-        return JSONResponse(content={"message": error_message}, status_code=500) """
-
-# Anterior
-""" @app.post("/uploadFile")
-async def upload_file(file: UploadFile = File(...)):
-    global vector_store, chat_history
-
-    try:
-        # Local
-        #with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        # Usar el directorio temporal de Azure
-        with tempfile.NamedTemporaryFile(dir="/temp", delete=False) as temp_file:
-            shutil.copyfileobj(file.file, temp_file)
-            document_path = temp_file.name
-
-        # Process the PDF
-        loader = PyPDFLoader(document_path)
-        documents = loader.load_and_split()
-        text_splitter = CharacterTextSplitter(chunk_size=1200, chunk_overlap=25)
-        docs = text_splitter.split_documents(documents)
-        embeddings = AzureOpenAIEmbeddings()
-        # Local
-        #vector_store = Chroma.from_documents(docs, embeddings, persist_directory="./persist")
-        # Azure
-        vector_store = Chroma.from_documents(docs, embeddings, persist_directory="/home/site/wwwroot/persist")
-        vector_store.persist()
-
-        # Add the file upload message to chat history
-        #chat_history.append({"role": "system", "content": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."})
-
-        return {"message": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."}
-    
-    except Exception as e:
-        return JSONResponse(content={"error": "Error procesando la carga del archivo"}, status_code=500) """
-
 # Con FAISS
 @app.post("/send")
-async def send_message(request: Request):
-    global vector_store, chat_history
+async def send_message(request: ChatRequest):
+    global chat_history
 
-    data = await request.json()  # Obtén el JSON del cuerpo de la solicitud
-    question = data.get('message')  # Accede al campo 'message'
+    user_id = request.user_id
+    question = request.message
+    user_dir = os.path.join(PERSIST_DIR, user_id)
+    index_file_path = os.path.join(user_dir, "vector_store.index")
 
+    print(user_id)
+    print(user_dir)
     print(question)
 
-    if vector_store is None:
-        return JSONResponse(content={"message": "No PDF file uploaded"}, status_code=400)
+    if not os.path.exists(index_file_path):
+        return JSONResponse(content={"message": f"No se ha cargado ningún archivo PDF para este usuario. Usuario Nro. {user_id}. Usuario Dir. {user_dir}"}, status_code=400)
 
     try:
+        # Cargar el vector store desde el directorio del usuario
+        vector_store = FAISS.load_local(index_file_path, embeddings=AzureOpenAIEmbeddings())
+
         # Definir el template y las variables de entrada
         template = """
         As a highly specialized assistant in helping Bantotal's analyst programmers understand the development of a requirement in Genexus, your task is to respond to questions in Spanish related to client requirements. 
@@ -213,100 +156,12 @@ async def send_message(request: Request):
     chat_history.append(HumanMessage(content=question))
     chat_history.append(AIMessage(content=answer))
 
-    print("Chat history: ", chat_history)
+    #print("Chat history: ", chat_history)
     print("Answer final")
     print(answer)
 
     # Devolver la respuesta JSON
     return JSONResponse(content={"answer": answer})
-
-# Con ChromaDB
-""" @app.post("/send")
-async def send_message(request: Request):
-    global vector_store, chat_history
-
-    data = await request.json()  # Obtén el JSON del cuerpo de la solicitud
-    question = data.get('message')  # Accede al campo 'message'
-
-    print(question)
-
-    if vector_store is None:
-        return JSONResponse(content={"message": "No PDF file uploaded"}, status_code=400)
-
-    try:
-        embeddings = AzureOpenAIEmbeddings()
-        vectordb = Chroma(persist_directory="./persist", embedding_function=embeddings)
-
-        # Verificar el contenido del vector store
-        """ """ print("Contenido del Vector Store:")
-        all_docs = vectordb.similarity_search("", k=5)
-        for doc in all_docs:
-            print(doc.page_content) """ """
-
-        # Definir el template y las variables de entrada
-        template = """ """
-        As a highly specialized assistant in helping Bantotal's analyst programmers understand the development of a requirement in Genexus, your task is to respond to questions in Spanish related to client requirements. 
-        These documents contain information about the requirements and the technical solution, including the logic that the program will execute, the database tables involved, and the programs related to the solution's development.
-
-        When answering questions, ensure that all information comes from the PDF document, previous chat history, or your prior knowledge of Bantotal and Genexus 8, 9, and 16. If a question cannot be answered, honestly state that you cannot answer it. 
-        Your responses should be detailed and focused on the question, providing all relevant details necessary for a complete answer without including information beyond the scope of the question.
-
-        Context: {context}
-
-        Question: {question}
-
-        Helpful Answer:
-        """ """
-
-        input_variables = ["context", "question"]
-        QA_CHAIN_PROMPT = PromptTemplate(template=template, input_variables=input_variables)
-
-        # Configuración del modelo LLM y embeddings
-        llm = AzureChatOpenAI(
-            deployment_name="gpt-35-turbo-16k", 
-            temperature=0
-        )
-
-        # Crear la cadena de conversación con recuperación utilizando un prompt personalizado
-        chain = ConversationalRetrievalChain.from_llm(
-            llm=llm,
-            retriever=vectordb.as_retriever(search_kwargs={"k": 1}),
-            return_source_documents=True,
-            combine_docs_chain_kwargs={"prompt": QA_CHAIN_PROMPT},
-        )
-
-        # Generar el contexto solo con mensajes de usuario y respuestas del asistente
-        context_list = []
-        documents = vectordb.similarity_search(query=question, k=5)
-        for doc in documents:
-            context_list.append(doc.page_content)
-        context = " ".join(context_list)
-
-        # Pasar la cadena de texto como contexto en el diccionario query
-        query = {"context": context, "question": question, "chat_history": chat_history}
-
-        # Intentar obtener la respuesta de la cadena
-        result = chain.invoke(query)
-        #print("Context: ", query['context'])
-        print(query)
-        answer = result["answer"]
-        
-    except Exception as e:
-        # Manejar cualquier excepción que ocurra durante la recuperación
-        print(f"Error retrieving answer: {e}")
-        answer = "Ocurrió un error al procesar la solicitud, por favor, intentalo más tarde."
-
-    # Agregar el nuevo mensaje del usuario al historial del chat
-    chat_history.append(HumanMessage(content=question))
-    chat_history.append(AIMessage(content=answer))
-
-    print("Chat history: ", chat_history)
-
-    print("Answer final")
-    print(answer)
-
-    # Devolver la respuesta JSON
-    return JSONResponse(content={"answer": answer}) """
 
 #----------------------------------------------------------------------------------------
 
