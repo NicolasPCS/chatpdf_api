@@ -24,8 +24,9 @@ load_dotenv()
 
 app = FastAPI()
 
-# Directorio persistente local en App Service
-PERSIST_DIR = os.path.join(os.getenv("HOME"), "site", "wwwroot", "persist")
+# Directorio persistente local en App Service o por defecto
+HOME_DIR = os.getenv("HOME", ".")  # Utilizar el directorio actual si HOME no está definido
+PERSIST_DIR = os.path.join(HOME_DIR, "persist")
 os.makedirs(PERSIST_DIR, exist_ok=True)
 
 # Static HTML file handling using Jinja2
@@ -50,8 +51,9 @@ class ChatRequest(BaseModel):
 
 # Con FAISS
 @app.post("/uploadFile")
-async def upload_file(file: UploadFile = File(...)):
-    user_id = str(uuid.uuid4())  # Generar un identificador único para el usuario
+async def upload_file(user_id: str = Form(...), file: UploadFile = File(...)):
+    global vector_store
+
     user_dir = os.path.join(PERSIST_DIR, user_id)
     os.makedirs(user_dir, exist_ok=True)
     
@@ -62,8 +64,8 @@ async def upload_file(file: UploadFile = File(...)):
 
         # Process the PDF
         loader = PyPDFLoader(document_path)
-        documents = loader.load_and_split()
-        text_splitter = CharacterTextSplitter(chunk_size=1200, chunk_overlap=25)
+        documents = loader.load()
+        text_splitter = CharacterTextSplitter(chunk_size=1200, chunk_overlap=0)
         docs = text_splitter.split_documents(documents)
         embeddings = AzureOpenAIEmbeddings()
         vector_store = FAISS.from_documents(docs, embeddings)
@@ -71,6 +73,12 @@ async def upload_file(file: UploadFile = File(...)):
         # Guardar el vector store en el directorio del usuario
         index_file_path = os.path.join(user_dir, "vector_store.index")
         faiss.write_index(vector_store.index, index_file_path)
+
+        #print(vector_store.index.ntotal)
+        # Print the content of the documents in the vector store
+        """ print("Documentos cargados en el vector store:")
+        for doc in docs:
+            print(doc.page_content[:200])  # Imprime los primeros 200 caracteres de cada documento """
 
         return {"message": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente."}
     
@@ -90,18 +98,12 @@ async def send_message(request: ChatRequest):
     user_dir = os.path.join(PERSIST_DIR, user_id)
     index_file_path = os.path.join(user_dir, "vector_store.index")
 
-    print(user_id)
-    print(user_dir)
-    print(question)
+    #print(request)
 
     if not os.path.exists(index_file_path):
         return JSONResponse(content={"message": f"No se ha cargado ningún archivo PDF para este usuario. Usuario Nro. {user_id}. Usuario Dir. {user_dir}"}, status_code=400)
 
     try:
-        # Cargar el vector store desde el directorio del usuario
-        index = faiss.read_index(index_file_path)
-        vector_store = FAISS(index=index, embeddings=AzureOpenAIEmbeddings())
-
         # Definir el template y las variables de entrada
         template = """
         As a highly specialized assistant in helping Bantotal's analyst programmers understand the development of a requirement in Genexus, your task is to respond to questions in Spanish related to client requirements. 
@@ -146,7 +148,7 @@ async def send_message(request: ChatRequest):
 
         # Intentar obtener la respuesta de la cadena
         result = chain.invoke(query)
-        print(query)
+        #print(query)
         answer = result["answer"]
         
     except Exception as e:
@@ -159,8 +161,8 @@ async def send_message(request: ChatRequest):
     chat_history.append(AIMessage(content=answer))
 
     #print("Chat history: ", chat_history)
-    print("Answer final")
-    print(answer)
+    #print("Answer final")
+    #print(answer)
 
     # Devolver la respuesta JSON
     return JSONResponse(content={"answer": answer})
