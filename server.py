@@ -56,6 +56,8 @@ async def upload_file(user_id: str = Form(...), file: UploadFile = File(...)):
 
     user_dir = os.path.join(PERSIST_DIR, user_id)
     os.makedirs(user_dir, exist_ok=True)
+
+    print(user_dir)
     
     try:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
