@@ -345,6 +345,7 @@
 
                     messageInput.value = '';
                     messageInput.disabled = false;
+                    messageInput.focus();
                     sendIcon.className = 'sendIcon';
                     sendButton.style.cursor = 'pointer';
                     awaitingResponse = false;
@@ -353,6 +354,7 @@
                     console.error('Error:', error);
                     messageInput.value = '';
                     messageInput.disabled = false;
+                    messageInput.focus();
                     sendIcon.className = 'sendIcon';
                     sendButton.style.cursor = 'pointer';
                     awaitingResponse = false;
@@ -407,6 +409,7 @@
 
                 messageInput.value = '';
                 messageInput.disabled = false;
+                messageInput.focus();
                 sendIcon.className = 'sendIcon';
                 sendButton.style.cursor = 'pointer';
                 awaitingResponse = false;
