@@ -52,7 +52,3 @@ chat_template = ChatPromptTemplate.from_messages(
 )
 
 chain = chat_template|openai
-
-#agent = AgentExecutor(agent=openai, prompt_template=chat_template, tools=tools, verbose=False)
-#agent = create_openai_tools_agent(openai, tools, chat_template)
-#agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
