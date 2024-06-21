@@ -6,7 +6,7 @@ templates/functions.js
 templates/styles.css
 server_loc.py
 chain.py
-persist/*
+persist/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

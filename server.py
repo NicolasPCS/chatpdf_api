@@ -60,7 +60,7 @@ async def upload_file(user_id: str = Form(...), file: UploadFile = File(...)):
     user_dir = os.path.join(PERSIST_DIR, user_id)
     os.makedirs(user_dir, exist_ok=True)
 
-    print(user_dir)
+    #print(user_dir)
     
     try:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -81,7 +81,7 @@ async def upload_file(user_id: str = Form(...), file: UploadFile = File(...)):
 
         #print(vector_store.index.ntotal)
         # Print the content of the documents in the vector store
-        print("Documentos cargados en el vector store:")
+        #print("Documentos cargados en el vector store:")
         """ for doc in docs:
             print(doc)  # Imprime los primeros 200 caracteres de cada documento """
         
@@ -206,9 +206,9 @@ def agent(question):
 async def handle_new_chat(request: Request):
     global chat_histories
     data = await request.json()
-    tab_id = data['tabId']
-    chat_histories[tab_id] = []
-    return JSONResponse(content={'status': f'new chat for {tab_id}'})
+    user_id = data['user_id']
+    chat_histories[user_id] = []
+    return JSONResponse(content={'status': f'new chat for {user_id}'})
 
 @app.post("/feedback")
 async def feedback(request: Request):

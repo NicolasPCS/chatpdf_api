@@ -267,17 +267,24 @@
         let awaitingResponse = false;
         let fileUploaded = false;
 
+        let user_id = sessionStorage.getItem('user_id');
+        if (!user_id) {
+            user_id = Date.now().toString() + Math.random().toString();
+            sessionStorage.setItem('user_id', user_id);
+            //console.log("Generated user_id:", user_id);
+        }
+
         document.getElementById('newChatButton').addEventListener('click', function() {
             fetch('/new_chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({tabId: tabId}),
+                body: JSON.stringify({user_id: user_id}),
             })
             .then(response => response.json())
             .then(data => {
-                console.log(data); // Muestra la respuesta del servidor, por ejemplo, para depuración
+                //console.log(data); // Muestra la respuesta del servidor, por ejemplo, para depuración
                 var chat = document.getElementById('chat');
                 chat.innerHTML = ''; // Esto borrará el contenido del chat
             })
@@ -289,13 +296,6 @@
             var scrollPosition = window.scrollY;
             message.style.height = 'auto';
             message.style.height = (message.scrollHeight+10)+ 'px';
-        }
-
-        let user_id = sessionStorage.getItem('user_id');
-        if (!user_id) {
-            user_id = Date.now().toString() + Math.random().toString();
-            sessionStorage.setItem('user_id', user_id);
-            console.log("Generated user_id:", user_id);
         }
 
         function sendMessage() {
@@ -320,7 +320,7 @@
                 sendIcon.className = 'waitIcon';
                 sendButton.style.cursor = 'default';
 
-                console.log(message)
+                //console.log(message)
 
                 fetch('/send', {
                     method: 'POST',
@@ -336,10 +336,9 @@
                 .then(data => {
                     var chat = document.getElementById('chat');
 
-                    console.log(data)
-                    console.log(data.answer)
+                    //console.log(data)
+                    //console.log(data.answer)
                     
-
                     chat.innerHTML += '<div class="message agent"><b>Asistente</b><br>' + escapeHTML(data.answer).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
                     chat.scrollTop = chat.scrollHeight;
 
@@ -351,7 +350,8 @@
                     awaitingResponse = false;
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+                    alert('Error:', error);
+                    //console.error('Error:', error);
                     messageInput.value = '';
                     messageInput.disabled = false;
                     messageInput.focus();
@@ -386,7 +386,7 @@
             })
             .then(response => response.json())
             .then(data => {
-                console.log('Success:', data);
+                //console.log('Success:', data);
                 fileUploaded = true;
 
                 // Obtener mensajes
@@ -415,7 +415,8 @@
                 awaitingResponse = false;
             })
             .catch(error => {
-                console.error('Error:', error);
+                alert('Error:', error);
+                //console.error('Error:', error);
             });
 
             adjustHeight();
