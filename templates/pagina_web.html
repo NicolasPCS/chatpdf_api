@@ -387,10 +387,22 @@
                 console.log('Success:', data);
                 fileUploaded = true;
 
+                // Obtener mensajes
+                var message = data.message
+                var description = data.description
+
                 //console.log(data.message)
 
+                // Verificar si descripcion está vacio
+                if (description === "") {
+                    description = "El archivo se encuentra vacío.";
+                }
+
                 var chat = document.getElementById('chat');
-                chat.innerHTML += '<div class="message agent"><b>Asistente</b><br>' + escapeHTML(data.message).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
+                chat.innerHTML += '<div class="message agent"><b>Asistente</b><br>' 
+                                    + escapeHTML(message).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
+                chat.innerHTML += '<div class="message agent"><b>Asistente</b><br>' 
+                                    + escapeHTML(description).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
                 chat.scrollTop = chat.scrollHeight;
 
                 messageInput.value = '';

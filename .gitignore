@@ -5,6 +5,8 @@ metodos_obj_str.pkl
 templates/functions.js
 templates/styles.css
 server_loc.py
+chain.py
+persist/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
