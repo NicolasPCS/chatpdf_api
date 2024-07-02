@@ -20,6 +20,7 @@ import uvicorn
 import os
 import csv
 import faiss
+import pandas as pd
 
 from chain import chain
 
@@ -39,6 +40,9 @@ templates = Jinja2Templates(directory="templates")
 vector_store = None
 chat_history = []
 chat_histories = {}
+ultima_respuesta = {}
+ultima_pregunta = {}
+feedback_file = 'feedback.csv'
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -86,14 +90,25 @@ async def upload_file(user_id: str = Form(...), file: UploadFile = File(...)):
             print(doc)  # Imprime los primeros 200 caracteres de cada documento """
         
         question = "Describe detalladamente todas las secciones del documento"
+
+        # Agregar la pregunta a la lista
+        ultima_pregunta[user_id] = question
+
         result = agent(question)
-        #print(query)
-        answer = result["answer"]
+        doc_content = result["answer"]
+
+        question = "Elabora 10 preguntas en texto plano del documento."
+        result = agent(question)
+        doc_questions = result["answer"]
 
         query = {
             "message": f"El archivo '{file.filename}' ha sido cargado y procesado correctamente.",
-            "description": answer
+            "description": doc_content,
+            "doc_questions": doc_questions
             }
+        
+        # Agregar la respuesta a la lista
+        ultima_respuesta[user_id] = doc_content
 
         return JSONResponse(content=query)
     
@@ -106,6 +121,8 @@ async def upload_file(user_id: str = Form(...), file: UploadFile = File(...)):
 # Con FAISS
 @app.post("/send")
 async def send_message(request: ChatRequest):
+    global ultima_respuesta
+    global ultima_pregunta
     global chat_history
 
     user_id = request.user_id
@@ -136,6 +153,10 @@ async def send_message(request: ChatRequest):
     #print("Chat history: ", chat_history)
     #print("Answer final")
     #print(answer)
+
+    # Guardar la última pregunta y respuesta
+    ultima_pregunta[user_id] = question
+    ultima_respuesta[user_id] = answer
 
     # Devolver la respuesta JSON
     return JSONResponse(content={"answer": answer})
@@ -210,20 +231,41 @@ async def handle_new_chat(request: Request):
     chat_histories[user_id] = []
     return JSONResponse(content={'status': f'new chat for {user_id}'})
 
+# Verificar que el archivo CSV exista y tenga las columnas adecuadas
+if not os.path.isfile(feedback_file):
+    df = pd.DataFrame(columns=['user_id', 'pregunta', 'respuesta', 'feedback', 'positive'])
+    df.to_csv(feedback_file, index=False)
+
 @app.post("/feedback")
 async def feedback(request: Request):
-    global chat_history
+    global ultima_respuesta
+    global ultima_pregunta
+
     data = await request.json()
-    feedback = data['feedback']
-    tab_id = data['tabId']
-    positive = int(data["positive"]) * 2 - 1
-    with open('feedback.csv', mode='a', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        if file.tell() == 0:
-            writer.writerow(["Pregunta", "Respuesta", "Seccion", "Positivo", "Comentario"])
-        writer.writerow([chat_history[-2]['content'], chat_history[-1]['content'], "selected_option", positive, feedback])
-    print([chat_history[-2]['content'], chat_history[-1]['content'], feedback])
-    return JSONResponse(content={'status': 'Feedback recibido'})
+    feedback_text = data.get('feedback')
+    positive = data.get('positive')
+    user_id = data.get('user_id')
+
+    # Lee el archivo CSV existente
+    df = pd.read_csv(feedback_file)
+
+    # Añade el nuevo feedback al DataFrame
+    question = ultima_pregunta.get(user_id, "")
+    answer = ultima_respuesta.get(user_id, "")
+
+    new_feedback = pd.DataFrame([{
+            'user_id': user_id, 
+            'pregunta': question,
+            'respuesta': answer,
+            'feedback': feedback_text, 
+            'positive': positive
+        }])
+    df = pd.concat([df, new_feedback], ignore_index=True)
+
+    # Guarda el DataFrame de vuelta al archivo CSV
+    df.to_csv(feedback_file, index=False)
+
+    return JSONResponse(content={'status': 'success'})
 
 if __name__ == '__main__':
     load_dotenv()

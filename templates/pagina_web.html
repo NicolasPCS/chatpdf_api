@@ -235,6 +235,11 @@
             border-radius: 5px;
             background-color: #f9f9f9;
         }
+
+        .disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -244,6 +249,9 @@
             <h2>Asistente <span class="red">&gt;</span>Bantotal</h2>
         </div>
         <div id="chat"></div>
+
+        <div id="default-questions"></div>
+
         <div id="message-container">
             <textarea id="message" rows="1" autofocus oninput="adjustHeight()" placeholder="Escribe tu pregunta..."></textarea>
             
@@ -298,6 +306,46 @@
             message.style.height = (message.scrollHeight+10)+ 'px';
         }
 
+        // Función para seleccionar dos preguntas aleatorias de una lista
+        function getRandomQuestions(questions) {
+            let shuffled = questions.sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, 2);
+        }
+
+        function defineQuestion(doc_questions) {
+            var questionsList = [];
+            
+            // Dividir el string en un array de preguntas
+            var questionsArray = doc_questions.split('\n'); // Suponiendo que las preguntas están separadas por saltos de línea
+
+            questionsArray.forEach(question => {
+                // Remover la numeración al inicio de cada pregunta
+                var questionText = question.replace(/^\d+\.\s*/, "");
+                questionsList.push(questionText);
+            });
+
+            //console.log(questionsList); // Para mostrar la lista en la consola
+
+            // Seleccionar dos preguntas aleatorias
+            var randomQuestions = getRandomQuestions(questionsList);
+
+            // Añadir las preguntas al contenedor HTML
+            var questionsContainer = document.getElementById('default-questions');
+            questionsContainer.innerHTML = ''; // Limpiar el contenido previo
+            randomQuestions.forEach(question => {
+                var button = document.createElement('button');
+                button.className = 'pregunta-btn';
+                button.textContent = question;
+                button.setAttribute('onclick', `presetQuestion('${question}')`);
+                questionsContainer.appendChild(button);
+            });
+        }
+
+        function presetQuestion(question) {
+            document.getElementById('message').value = question;
+            sendMessage();
+        }
+
         function sendMessage() {
             if (awaitingResponse) return;
             if (!fileUploaded) {
@@ -305,7 +353,9 @@
                 return;
             }
             var messageInput = document.getElementById('message');
+
             var message = messageInput.value;
+
             var chat = document.getElementById('chat');
             var sendButton = document.getElementById('sendButton');
             var sendIcon = document.getElementById('sendIcon');
@@ -338,8 +388,17 @@
 
                     //console.log(data)
                     //console.log(data.answer)
+
+                    var answer = data.answer;
                     
-                    chat.innerHTML += '<div class="message agent"><b>Asistente</b><br>' + escapeHTML(data.answer).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
+                    //chat.innerHTML += '<div class="message agent"><b>Asistente</b><br>' + escapeHTML(answer).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
+
+                    chat.innerHTML += '<div class="message agent"><b>Asistente</b><br>' + escapeHTML(answer).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') +
+                    '<div class="feedback-buttons-container">' +
+                    ' <span class="feedback-button-pos" onclick="sendFeedback(this, true)">✓</span>' +
+                    ' <span class="feedback-button-neg" onclick="sendFeedback(this, false)">✗</span>' +
+                    '</div></div>';
+
                     chat.scrollTop = chat.scrollHeight;
 
                     messageInput.value = '';
@@ -392,6 +451,15 @@
                 // Obtener mensajes
                 var message = data.message
                 var description = data.description
+                var doc_questions = data.doc_questions
+
+                // console.log(doc_questions)
+
+                if (doc_questions === ""){
+                    alert("No se generaron las preguntas sobre el documento correctamente")
+                } else { 
+                    defineQuestion(doc_questions)
+                }
 
                 //console.log(data.message)
 
@@ -404,7 +472,11 @@
                 chat.innerHTML += '<div class="message agent"><b>Asistente</b><br>' 
                                     + escapeHTML(message).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
                 chat.innerHTML += '<div class="message agent"><b>Asistente</b><br>' 
-                                    + escapeHTML(description).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') + '</div>';
+                                    + escapeHTML(description).replace(/\n/g, '<br>').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;') +
+                                    '<div class="feedback-buttons-container">' +
+                                    ' <span class="feedback-button-pos">✓</span>' +
+                                    ' <span class="feedback-button-neg">✗</span>' +
+                                    '</div></div>';
                 chat.scrollTop = chat.scrollHeight;
 
                 messageInput.value = '';
@@ -416,11 +488,20 @@
             })
             .catch(error => {
                 alert('Error:', error);
-                //console.error('Error:', error);
+                console.error('Error:', error);
             });
 
             adjustHeight();
         }
+
+        document.getElementById('chat').addEventListener('click', function(event) {
+            if (event.target.classList.contains('feedback-button-pos')) {
+                showFeedbackBox(event.target, true);
+                //console.log("click")
+            } else if (event.target.classList.contains('feedback-button-neg')) {
+                showFeedbackBox(event.target, false);
+            }
+        });
 
         function resetUI() {
             // Restablece la interfaz de usuario para permitir nuevas entradas
@@ -495,19 +576,24 @@
             feedbackBox.focus();
         }
 
-        /* function sendFeedback(feedbackText, button, isPositive) {
+        function sendFeedback(feedbackText, button, isPositive) {
+            var feedback = isPositive ? 'positive' : 'negative';
+
             fetch('/feedback', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({feedback: feedbackText, positive: isPositive, tabId: tabId}),
+                        body: JSON.stringify({
+                            feedback: feedbackText, 
+                            positive: feedback,
+                            user_id: user_id
+                        }),
                     })
                     .then(response => response.json())
                     .then(data => console.log(data))
                     .catch(error => console.error('Error:', error));
-        } */
-
+        }
 
         document.getElementById('message').addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
