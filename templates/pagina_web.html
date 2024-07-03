@@ -312,22 +312,24 @@
             return shuffled.slice(0, 2);
         }
 
+        // Variable global para almacenar las preguntas originales
+        let allQuestions = [];
+
+        // Función para definir las preguntas
         function defineQuestion(doc_questions) {
-            var questionsList = [];
-            
             // Dividir el string en un array de preguntas
             var questionsArray = doc_questions.split('\n'); // Suponiendo que las preguntas están separadas por saltos de línea
 
-            questionsArray.forEach(question => {
-                // Remover la numeración al inicio de cada pregunta
-                var questionText = question.replace(/^\d+\.\s*/, "");
-                questionsList.push(questionText);
-            });
+            allQuestions = questionsArray.map(question => question.replace(/^\d+\.\s*/, ""));
+            
+            // Mostrar dos preguntas aleatorias inicialmente
+            showRandomQuestions();
+        }
 
-            //console.log(questionsList); // Para mostrar la lista en la consola
-
+        // Función para mostrar dos preguntas aleatorias
+        function showRandomQuestions() {
             // Seleccionar dos preguntas aleatorias
-            var randomQuestions = getRandomQuestions(questionsList);
+            var randomQuestions = getRandomQuestions(allQuestions);
 
             // Añadir las preguntas al contenedor HTML
             var questionsContainer = document.getElementById('default-questions');
@@ -344,6 +346,7 @@
         function presetQuestion(question) {
             document.getElementById('message').value = question;
             sendMessage();
+            showRandomQuestions(); // Actualizar las preguntas después de enviar el mensaje
         }
 
         function sendMessage() {

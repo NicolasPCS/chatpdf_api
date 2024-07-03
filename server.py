@@ -173,6 +173,7 @@ def agent(question):
         - You must answer the user's questions in SPANISH clearly, precisely, and in detail, ensuring that you use only the information provided in the document, the chat history, and any prior knowledge about Genexus and Bantotal that you possess.
         - If a question cannot be answered based on the information in the document or your knowledge, you should ask the user to provide more information or context. Otherwise, honestly state that you cannot answer the question.
         - Be detailed in your responses, but stay focused on the question. Add all useful details to provide a complete answer, but do not include details that are outside the scope of the question.
+        - In your responses, at the end, and separated by a line break, indicate the page number from which you extracted the answers.
         - Below is an example of the structure that a requirements document may have:
         Example of the structure:
             - Objective: Helps analyst programmers understand the objective of the requirement.
